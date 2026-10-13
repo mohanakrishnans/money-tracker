@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0e7a5f">
+<meta name="color-scheme" content="light dark">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Rupee Ledger</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single-column phone app. Header summary, scrolling content, bottom tab bar, full-screen entry sheet. */
+:root{
+  --bg:#f2f4f1; --card:#ffffff; --ink:#15231e; --muted:#66756e; --line:#e1e6e1;
+  --accent:#0e7a5f; --accent-ink:#ffffff; --accent-soft:#dff1ea;
+  --out:#b8420f; --out-soft:#fbe8dd; --in:#0e7a5f; --in-soft:#dff1ea;
+  --danger:#b3261e;
+  color-scheme:light;
+  --font:'DM Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --mono:'DM Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1714; --card:#16231f; --ink:#e8f0ec; --muted:#8fa299; --line:#25352f;
+  --accent:#3fc29c; --accent-ink:#06231a; --accent-soft:#17382e;
+  --out:#f08a5b; --out-soft:#3a2418; --in:#3fc29c; --in-soft:#17382e; --danger:#f2867f; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1714; --card:#16231f; --ink:#e8f0ec; --muted:#8fa299; --line:#25352f;
+  --accent:#3fc29c; --accent-ink:#06231a; --accent-soft:#17382e;
+  --out:#f08a5b; --out-soft:#3a2418; --in:#3fc29c; --in-soft:#17382e; --danger:#f2867f; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:15px;line-height:1.4;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{max-width:480px;margin-inline:auto;min-height:100%;display:flex;flex-direction:column;padding-inline:16px;padding-block:16px 96px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0}
+.top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px}
+.brand{font-weight:700;font-size:18px;letter-spacing:-.01em}
+.date-label{color:var(--muted);font-size:13px}
+.hero{background:var(--accent);color:var(--accent-ink);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px}
+.hero .lbl{font-size:12px;letter-spacing:.08em;text-transform:uppercase;opacity:.85}
+.hero .big{font-size:38px;font-weight:500;line-height:1.1;margin-top:4px}
+.hero .row{display:flex;gap:10px;flex-wrap:wrap}
+.pill{background:rgba(255,255,255,.18);border-radius:999px;padding:5px 12px;font-size:13px}
+.sec{display:flex;align-items:center;justify-content:space-between;margin:22px 0 8px}
+.sec h2{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.link{background:none;border:0;color:var(--accent);font-weight:700;padding:6px 0}
+.list{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.tx{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid var(--line);padding:12px 14px;min-height:56px}
+.tx:last-child{border-bottom:0}
+.tx:active{background:var(--bg)}
+.tx .mid{flex:1;min-width:0}
+.tx .d{font-weight:500;overflow-wrap:anywhere}
+.tx .s{color:var(--muted);font-size:12.5px;margin-top:1px}
+.tx .amt{font-weight:500;white-space:nowrap}
+.amt.out{color:var(--out)} .amt.in{color:var(--in)}
+.dot{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.dot.out{background:var(--out-soft);color:var(--out)} .dot.in{background:var(--in-soft);color:var(--in)}
+.dayhead{display:flex;justify-content:space-between;padding:8px 14px;background:var(--bg);color:var(--muted);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-bottom:1px solid var(--line)}
+.empty{padding:28px 18px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-size:16px;margin-bottom:4px}
+.btn{border:0;border-radius:14px;padding:13px 18px;font-weight:700;background:var(--accent);color:var(--accent-ink);min-height:48px}
+.btn.alt{background:var(--card);color:var(--ink);border:1px solid var(--line)}
+.btn.danger{background:var(--card);color:var(--danger);border:1px solid var(--danger)}
+.btn.sm{min-height:40px;padding:8px 14px;margin-top:12px}
+.fab{position:fixed;right:max(16px,calc(50% - 240px + 16px));bottom:calc(76px + env(safe-area-inset-bottom,0px));background:var(--accent);color:var(--accent-ink);border:0;border-radius:18px;height:56px;padding:0 22px;font-weight:700;font-size:16px;box-shadow:0 6px 18px rgba(0,0,0,.25);display:flex;align-items:center;gap:8px;z-index:5}
+.fab span{font-size:24px;line-height:1;margin-top:-2px}
+.tabs{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 16px calc(6px + env(safe-area-inset-bottom,0px));z-index:6}
+.tabs div{max-width:480px;margin-inline:auto;display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tab{background:none;border:0;border-radius:12px;padding:8px 4px;color:var(--muted);font-size:12px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:48px}
+.tab svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+.field{display:flex;flex-direction:column;gap:6px;margin-bottom:16px;min-width:0}
+.field>label,.field>.lab{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between}
+.in-box{width:100%;background:var(--card);border:1.5px solid var(--line);border-radius:14px;padding:12px 14px;min-height:50px;min-width:0}
+.in-box:focus{border-color:var(--accent);outline:none}
+textarea.in-box{min-height:76px;resize:vertical}
+.amt-wrap{display:flex;align-items:center;gap:8px;background:var(--card);border:1.5px solid var(--line);border-radius:16px;padding:6px 14px}
+.amt-wrap:focus-within{border-color:var(--accent)}
+.amt-wrap .rs{font-size:28px;color:var(--muted)}
+.amt-wrap input{border:0;background:none;font-size:34px;width:100%;min-width:0;padding:6px 0;outline:none}
+.seg{display:grid;grid-template-columns:1fr 1fr;background:var(--line);border-radius:14px;padding:3px;gap:3px}
+.seg button{border:0;background:none;border-radius:11px;padding:10px;font-weight:700;color:var(--muted);min-height:44px}
+.seg button[aria-pressed="true"].o{background:var(--out);color:#fff}
+.seg button[aria-pressed="true"].i{background:var(--in);color:var(--accent-ink)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:8px 14px;font-weight:500;min-height:40px}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:700}
+.chip.ghost{font-size:13px;padding:6px 12px;min-height:34px;color:var(--muted)}
+.chip.ghost[aria-pressed="true"]{color:var(--accent-ink)}
+.grp{font-size:11px;color:var(--muted);margin:2px 0 6px;letter-spacing:.04em}
+.sheet{position:fixed;inset:0;background:var(--bg);z-index:20;overflow-y:auto;padding-top:env(safe-area-inset-top,0px)}
+.sheet-in{max-width:480px;margin-inline:auto;padding:16px 16px calc(24px + env(safe-area-inset-bottom,0px))}
+.sheet-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.sheet-head h2{font-size:20px}
+.x{background:var(--card);border:1px solid var(--line);border-radius:12px;width:44px;height:44px;font-size:20px}
+.sno{background:var(--accent-soft);color:var(--accent);border-radius:8px;padding:3px 9px;font-size:13px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.filters{display:grid;gap:10px;margin-bottom:12px}
+.sum{display:flex;gap:10px;margin:12px 0}
+.sum div{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 12px;min-width:0}
+.sum small{display:block;color:var(--muted);font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.sum b{font-weight:500;font-size:13px;white-space:nowrap;letter-spacing:-.02em}
+.fmt{display:grid;gap:10px;margin-top:6px}
+.fmt button{display:flex;align-items:center;gap:14px;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;min-height:64px}
+.fmt .ic{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;font-weight:700;font-size:12px;background:var(--accent-soft);color:var(--accent);flex:none}
+.fmt b{display:block} .fmt span.t{color:var(--muted);font-size:13px}
+.note{color:var(--muted);font-size:13px;margin-top:14px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:12px;font-weight:500;z-index:40;max-width:calc(100% - 32px);text-align:center}
+.err{color:var(--danger);font-size:13px;min-height:18px}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}}
+
+.opt{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.opt .ol{width:48px;flex:none;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.opt .chips{gap:6px}
+.tbl{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:6px}
+.tbl table{border-collapse:collapse;width:100%;min-width:560px;font-size:13px}
+.tbl th{text-align:left;font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);padding:9px 10px;border-bottom:1px solid var(--line);background:var(--bg);position:sticky;top:0}
+.tbl td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tbody tr:active{background:var(--bg)}
+.tbl .r{text-align:right}.tbl .nw{white-space:nowrap}.tbl .rem{min-width:120px;color:var(--muted)}
+.tbl td.out{color:var(--out)}.tbl td.in{color:var(--in)}
+.tbl tfoot td{font-weight:700;background:var(--accent-soft);color:var(--ink);border-bottom:0}
+.acc{padding:12px 14px;border-bottom:1px solid var(--line)}.acc:last-child{border-bottom:0}
+.acc-h{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.acc .sm{font-size:12px;color:var(--muted)}
+.bar{display:flex;align-items:center;gap:10px;margin-top:5px;font-size:13px}
+.bar i{display:block;height:10px;border-radius:5px;flex:none;max-width:60%}
+.bar i.o{background:var(--out)}.bar i.n{background:var(--in)}
+</style>
+</head><body>
+<div class="app" id="app"></div>
+<div id="sheet" class="sheet" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+var KEY='rupee-ledger-v1';
+var UPI=['Amazon Pay','GPay','PhonePe'], BANK=['SBI','Canara','IOB'], OTHER=['Cash','Other'];
+var VIAS=UPI.concat(BANK,OTHER);
+var mem=null;
+function load(){
+  try{var r=localStorage.getItem(KEY);if(r){var d=JSON.parse(r);if(d&&Array.isArray(d.items))return d;}}catch(e){}
+  return mem||{nextNo:1,items:[],lastVia:'GPay'};
+}
+function save(){mem=S;try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+var S=load();
+var ui={tab:'home',q:'',via:'',type:'',from:'',to:'',xfrom:'',xto:'',xview:'table',xsort:'asc',xtype:''};
+
+/* helpers */
+function pad(n){return n<10?'0'+n:''+n}
+function iso(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function today(){return iso(new Date())}
+function dmy(s){var p=s.split('-');return p[2]+'-'+p[1]+'-'+p[0]}
+var MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function nice(s){var p=s.split('-');return parseInt(p[2],10)+' '+MON[parseInt(p[1],10)-1]}
+function niceLong(s){var p=s.split('-');return parseInt(p[2],10)+' '+MON[parseInt(p[1],10)-1]+' '+p[0]}
+function inr(n,dec){return '₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:dec?2:0,maximumFractionDigits:2})}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function $(id){return document.getElementById(id)}
+function tc(s){return String(s==null?'':s).toLowerCase().replace(/(^|[\s\-\/&(.])(\p{L})/gu,function(m,a,b){return a+b.toUpperCase()})}
+S.items.forEach(function(t){t.desc=tc(t.desc);t.remarks=tc(t.remarks)});
+function sorted(a){return a.slice().sort(function(x,y){return x.date<y.date?1:x.date>y.date?-1:y.no-x.no})}
+function totals(a){var o=0,i=0;a.forEach(function(t){if(t.type==='in')i+=t.amount;else o+=t.amount});return{out:Math.round(o*100)/100,inc:Math.round(i*100)/100}}
+function inRange(t,f,e){return (!f||t.date>=f)&&(!e||t.date<=e)}
+function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(function(){t.hidden=true},2400)}
+function initials(v){return v==='Amazon Pay'?'AP':v==='GPay'?'GP':v==='PhonePe'?'PP':v==='Cash'?'₹':v==='Other'?'•':v.slice(0,2).toUpperCase()}
+
+/* icons */
+var IC={
+ home:'<svg viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>',
+ list:'<svg viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>',
+ exp:'<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 20h16"/></svg>'
+};
+
+/* rows */
+function txRow(t){
+  var sign=t.type==='in'?'+':'−';
+  return '<button class="tx" data-edit="'+t.no+'"><div class="dot '+t.type+'">'+esc(initials(t.via))+'</div>'+
+   '<div class="mid"><div class="d">'+esc(t.desc||'(no description)')+'</div><div class="s"><span class="num">#'+t.no+'</span> · '+esc(t.via)+' · '+nice(t.date)+(t.remarks?' · note':'')+'</div></div>'+
+   '<div class="amt num '+t.type+'">'+sign+inr(t.amount,true)+'</div></button>';
+}
+function emptyBlock(){
+  return '<div class="empty"><b>No entries yet</b>Tap Add Transaction to record your first expense or income.<br><button class="btn alt sm" id="sample">Load 5 sample entries</button></div>';
+}
+
+/* views */
+function viewHome(){
+  var td=today(), tl=S.items.filter(function(t){return t.date===td});
+  var tt=totals(tl), recent=sorted(S.items).slice(0,8);
+  var h='<div class="top"><div class="brand">Rupee Ledger</div><div class="date-label">'+niceLong(td)+'</div></div>'+
+   '<div class="hero"><div><div class="lbl">Today’s spending</div><div class="big num">'+inr(tt.out,true)+'</div></div>'+
+   '<div class="row"><span class="pill">'+tl.length+' transaction'+(tl.length===1?'':'s')+'</span>'+(tt.inc?'<span class="pill">Income '+inr(tt.inc,true)+'</span>':'')+'</div></div>'+
+   '<div class="sec"><h2>Recent</h2>'+(S.items.length?'<button class="link" data-go="records">See all</button>':'')+'</div>'+
+   '<div class="list">'+(recent.length?recent.map(txRow).join(''):emptyBlock())+'</div>';
+  return h;
+}
+function filtered(){
+  var q=ui.q.trim().toLowerCase();
+  return sorted(S.items.filter(function(t){
+    if(ui.via&&t.via!==ui.via)return false;
+    if(ui.type&&t.type!==ui.type)return false;
+    if(!inRange(t,ui.from,ui.to))return false;
+    if(q){var hay=(t.desc+' '+t.via+' '+t.remarks+' '+t.amount+' '+t.no).toLowerCase();if(hay.indexOf(q)<0)return false}
+    return true;
+  }));
+}
+function viewRecords(){
+  var opts='<option value="">All accounts</option>'+VIAS.map(function(v){return '<option'+(ui.via===v?' selected':'')+'>'+v+'</option>'}).join('');
+  var h='<div class="top"><div class="brand">Records</div></div>'+
+   '<div class="filters"><input id="q" class="in-box" type="search" placeholder="Search description, notes, amount" value="'+esc(ui.q)+'">'+
+   '<div class="row2"><select id="fvia" class="in-box" aria-label="Account">'+opts+'</select>'+
+   '<select id="ftype" class="in-box" aria-label="Type"><option value="">Expense + income</option><option value="out"'+(ui.type==='out'?' selected':'')+'>Expenses</option><option value="in"'+(ui.type==='in'?' selected':'')+'>Income</option></select></div>'+
+   '<div class="row2"><input id="ffrom" class="in-box" type="date" aria-label="From date" value="'+ui.from+'"><input id="fto" class="in-box" type="date" aria-label="To date" value="'+ui.to+'"></div></div>'+
+   '<div id="reclist"></div>';
+  return h;
+}
+function recList(){
+  var f=filtered(), t=totals(f), h='';
+  h+='<div class="sum"><div><small>Spent</small><b class="num">'+inr(t.out,true)+'</b></div><div><small>Income</small><b class="num">'+inr(t.inc,true)+'</b></div><div><small>Entries</small><b class="num">'+f.length+'</b></div></div>';
+  if(!f.length){h+='<div class="list">'+(S.items.length?'<div class="empty"><b>Nothing matches</b>Try clearing the search or filters.</div>':emptyBlock())+'</div>';return h}
+  h+='<div class="list">';var last='';
+  f.forEach(function(x){
+    if(x.date!==last){last=x.date;var day=totals(f.filter(function(y){return y.date===x.date}));
+      h+='<div class="dayhead"><span>'+niceLong(x.date)+'</span><span class="num">'+(day.out?'−'+inr(day.out,true):'')+'</span></div>'}
+    h+=txRow(x);
+  });
+  return h+'</div>';
+}
+function monthStart(d){return iso(new Date(d.getFullYear(),d.getMonth(),1))}
+function viewExport(){
+  if(!ui.xfrom)ui.xfrom=monthStart(new Date());
+  if(!ui.xto)ui.xto=today();
+  return '<div class="top"><div class="brand">Export</div></div>'+
+   '<div class="sec" style="margin-top:0"><h2>Date range</h2></div>'+
+   '<div class="row2"><div class="field"><label for="xf">From</label><input id="xf" class="in-box" type="date" value="'+ui.xfrom+'"></div>'+
+   '<div class="field"><label for="xt">To</label><input id="xt" class="in-box" type="date" value="'+ui.xto+'"></div></div>'+
+   '<div class="chips" style="margin-bottom:12px"><button class="chip ghost" data-preset="month">This month</button><button class="chip ghost" data-preset="last">Last month</button><button class="chip ghost" data-preset="all">All time</button></div>'+
+   '<div class="sec"><h2>View options</h2></div>'+
+   '<div class="opt"><span class="ol">Show</span>'+optChips('xview',[['table','Table'],['list','List'],['summary','By account']])+'</div>'+
+   '<div class="opt"><span class="ol">Type</span>'+optChips('xtype',[['','All'],['out','Expenses'],['in','Income']])+'</div>'+
+   '<div class="opt"><span class="ol">Order</span>'+optChips('xsort',[['asc','Oldest first'],['desc','Newest first']])+'</div>'+
+   '<div id="xsum"></div>'+
+   '<div class="sec"><h2>Choose format</h2></div>'+
+   '<div class="fmt"><button data-exp="csv"><div class="ic">CSV</div><div><b>CSV file</b><span class="t">Opens in Excel and Google Sheets</span></div></button>'+
+   '<button data-exp="xlsx"><div class="ic">XLSX</div><div><b>Excel workbook</b><span class="t">Formatted table with totals</span></div></button>'+
+   '<button data-exp="pdf"><div class="ic">PDF</div><div><b>PDF statement</b><span class="t">Printable, with date range and totals</span></div></button></div>'+
+   '<p class="note">Your entries are stored on this phone only.</p>'+
+   '<div class="sec"><h2>Backup</h2></div>'+
+   '<div class="row2"><button class="btn alt" data-act="backup">Save backup</button><label class="btn alt" for="restore" style="display:flex;align-items:center;justify-content:center;cursor:pointer">Restore backup</label></div>'+
+   '<input id="restore" type="file" accept=".json,application/json" hidden><div id="rbox"></div>'+
+   '<p class="note">Save a backup now and then. Restore it if you change phones or clear browser data.</p>';
+}
+function optChips(key,list){
+  return '<div class="chips">'+list.map(function(o){return '<button class="chip ghost" data-opt="'+key+'" data-val="'+o[0]+'" aria-pressed="'+(ui[key]===o[0])+'">'+o[1]+'</button>'}).join('')+'</div>';
+}
+function xsum(){
+  var f=rangeItems(),t=totals(f);
+  var h='<div class="sum"><div><small>Spent</small><b class="num">'+inr(t.out,true)+'</b></div><div><small>Income</small><b class="num">'+inr(t.inc,true)+'</b></div><div><small>Entries</small><b class="num">'+f.length+'</b></div></div>';
+  if(!f.length)return h+'<div class="list"><div class="empty"><b>No entries to show</b>Change the date range or type above.</div></div>';
+  var CAP=300,shown=f.slice(0,CAP);
+  if(ui.xview==='table'){
+    h+='<div class="tbl"><table><thead><tr><th>#</th><th>Date</th><th>Description</th><th>Paid Via</th><th class="r">Expense</th><th class="r">Income</th><th>Remarks</th></tr></thead><tbody>'+
+     shown.map(function(x){return '<tr data-edit="'+x.no+'"><td class="num">'+x.no+'</td><td class="num nw">'+dmy(x.date)+'</td><td>'+esc(x.desc)+'</td><td class="nw">'+esc(x.via)+'</td><td class="r num out">'+(x.type==='out'?x.amount.toFixed(2):'')+'</td><td class="r num in">'+(x.type==='in'?x.amount.toFixed(2):'')+'</td><td class="rem">'+esc(x.remarks)+'</td></tr>'}).join('')+
+     '</tbody><tfoot><tr><td colspan="4">Total</td><td class="r num">'+t.out.toFixed(2)+'</td><td class="r num">'+t.inc.toFixed(2)+'</td><td></td></tr></tfoot></table></div>';
+  }else if(ui.xview==='list'){
+    h+='<div class="list">'+shown.map(txRow).join('')+'</div>';
+  }else{
+    var g={};f.forEach(function(x){var k=g[x.via]||(g[x.via]={out:0,inc:0,n:0});k.n++;if(x.type==='in')k.inc+=x.amount;else k.out+=x.amount});
+    var keys=Object.keys(g).sort(function(a,b){return g[b].out-g[a].out}),max=Math.max.apply(null,keys.map(function(k){return Math.max(g[k].out,g[k].inc)}))||1;
+    h+='<div class="list">'+keys.map(function(k){var v=g[k];
+      return '<div class="acc"><div class="acc-h"><b>'+esc(k)+'</b><span class="num sm">'+v.n+' entr'+(v.n===1?'y':'ies')+'</span></div>'+
+       (v.out?'<div class="bar"><i class="o" style="width:'+Math.max(3,v.out/max*100)+'%"></i><span class="num">\u2212'+inr(v.out,true)+'</span></div>':'')+
+       (v.inc?'<div class="bar"><i class="n" style="width:'+Math.max(3,v.inc/max*100)+'%"></i><span class="num">+'+inr(v.inc,true)+'</span></div>':'')+'</div>'}).join('')+'</div>';
+  }
+  if(f.length>CAP)h+='<p class="note">Showing the first '+CAP+' of '+f.length+' entries here. Exports include all of them.</p>';
+  return h+'<p class="note">Exports use the same range, type and order shown here.</p>';
+}
+
+function render(){
+  var v=ui.tab==='home'?viewHome():ui.tab==='records'?viewRecords():viewExport();
+  var tabs='<div class="tabs"><div>'+
+   [['home','Home',IC.home],['records','Records',IC.list],['export','Export',IC.exp]].map(function(t){
+     return '<button class="tab" data-go="'+t[0]+'"'+(ui.tab===t[0]?' aria-current="page"':'')+'>'+t[2]+t[1]+'</button>'}).join('')+'</div></div>';
+  var fab=ui.tab!=='export'?'<button class="fab" id="add"><span>+</span>Add Transaction</button>':'';
+  $('app').innerHTML=v+fab+tabs;
+  if(ui.tab==='records')$('reclist').innerHTML=recList();
+  if(ui.tab==='export')$('xsum').innerHTML=xsum();
+}
+
+/* entry sheet */
+var draft=null;
+function openSheet(no){
+  var ex=no?S.items.filter(function(t){return t.no===no})[0]:null;
+  draft=ex?{no:ex.no,date:ex.date,type:ex.type,amount:String(ex.amount),desc:ex.desc,via:ex.via,remarks:ex.remarks||''}:
+    {no:null,date:today(),type:'out',amount:'',desc:'',via:S.lastVia||'GPay',remarks:''};
+  drawSheet(!ex);
+  $('sheet').hidden=false;
+  document.body.style.overflow='hidden';
+}
+function closeSheet(){$('sheet').hidden=true;document.body.style.overflow='';draft=null}
+function chipGroup(list){return '<div class="chips">'+list.map(function(v){return '<button type="button" class="chip" data-via="'+v+'" aria-pressed="'+(draft.via===v)+'">'+v+'</button>'}).join('')+'</div>'}
+function recentDescs(){
+  var seen={},out=[];sorted(S.items).forEach(function(t){var d=(t.desc||'').trim();if(d&&!seen[d.toLowerCase()]&&out.length<6){seen[d.toLowerCase()]=1;out.push(d)}});return out;
+}
+function drawSheet(focus){
+  var isNew=!draft.no, sn=isNew?S.nextNo:draft.no;
+  var rd=isNew?recentDescs():[];
+  $('sheet').innerHTML='<div class="sheet-in"><div class="sheet-head"><h2>'+(isNew?'Add transaction':'Edit transaction')+'</h2><button class="x" id="close" aria-label="Close">✕</button></div>'+
+   '<div class="field"><div class="lab"><span>S.No.</span></div><div><span class="sno num">#'+sn+'</span> <span style="color:var(--muted);font-size:13px">&nbsp;assigned automatically</span></div></div>'+
+   '<div class="field"><div class="seg"><button type="button" class="o" data-type="out" aria-pressed="'+(draft.type==='out')+'">Expense</button><button type="button" class="i" data-type="in" aria-pressed="'+(draft.type==='in')+'">Income</button></div></div>'+
+   '<div class="field"><label for="fa">Amount</label><div class="amt-wrap"><span class="rs num">₹</span><input id="fa" class="num" inputmode="decimal" autocomplete="off" placeholder="0" value="'+esc(draft.amount)+'"></div></div>'+
+   '<div class="field"><label for="fd"><span>Description</span><span class="num" id="cnt">'+draft.desc.length+'/15</span></label><input id="fd" class="in-box" maxlength="15" autocomplete="off" placeholder="e.g. Groceries" value="'+esc(draft.desc)+'">'+
+   (rd.length?'<div class="chips">'+rd.map(function(d){return '<button type="button" class="chip ghost" data-desc="'+esc(d)+'">'+esc(d)+'</button>'}).join('')+'</div>':'')+'</div>'+
+   '<div class="field"><label for="fdate">Date</label><input id="fdate" class="in-box" type="date" value="'+draft.date+'"></div>'+
+   '<div class="field"><div class="lab"><span>Paid via</span></div><div class="grp">UPI</div>'+chipGroup(UPI)+'<div class="grp" style="margin-top:10px">BANK ACCOUNT</div>'+chipGroup(BANK)+'<div class="grp" style="margin-top:10px">OTHER</div>'+chipGroup(OTHER)+'</div>'+
+   '<div class="field"><label for="fr">Notes / remarks <span style="text-transform:none;letter-spacing:0;font-weight:400">optional</span></label><textarea id="fr" class="in-box" placeholder="Anything extra to remember">'+esc(draft.remarks)+'</textarea></div>'+
+   '<div class="err" id="err" role="alert"></div>'+
+   '<button class="btn" id="save" style="width:100%">'+(isNew?'Save transaction':'Save changes')+'</button>'+
+   (isNew?'':'<button class="btn danger" id="del" style="width:100%;margin-top:10px">Delete this entry</button>')+
+   '</div>';
+  if(focus)setTimeout(function(){var a=$('fa');if(a)a.focus()},60);
+}
+function readDraft(){
+  draft.amount=$('fa').value;draft.desc=$('fd').value;draft.date=$('fdate').value;draft.remarks=$('fr').value;
+}
+function commit(){
+  readDraft();
+  var amt=parseFloat(String(draft.amount).replace(/,/g,''));
+  var err=$('err');
+  if(!(amt>0)){err.textContent='Enter an amount greater than 0.';$('fa').focus();return}
+  if(!draft.date){err.textContent='Pick a date.';return}
+  var rec={date:draft.date,type:draft.type,amount:Math.round(amt*100)/100,desc:tc(draft.desc.trim().slice(0,15)),via:draft.via,remarks:tc(draft.remarks.trim())};
+  if(draft.no){S.items=S.items.map(function(t){return t.no===draft.no?Object.assign({no:t.no},rec):t});toast('Changes saved')}
+  else{rec.no=S.nextNo;S.nextNo++;S.items.push(rec);S.lastVia=draft.via;toast('Saved as #'+rec.no)}
+  save();closeSheet();render();
+}
+
+/* export */
+function rangeItems(){
+  var a=sorted(S.items.filter(function(t){return inRange(t,ui.xfrom,ui.xto)&&(!ui.xtype||t.type===ui.xtype)}));
+  return ui.xsort==='asc'?a.reverse():a;
+}
+function rangeLabel(){return dmy(ui.xfrom)+' to '+dmy(ui.xto)}
+function csvCell(v){v=String(v==null?'':v);return /[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}
+function makeCSV(a){
+  var rows=[['S.No','Date','Description','Paid Via','Expense (INR)','Income (INR)','Remarks']];
+  a.forEach(function(t){rows.push([t.no,dmy(t.date),t.desc,t.via,t.type==='out'?t.amount.toFixed(2):'',t.type==='in'?t.amount.toFixed(2):'',t.remarks])});
+  return '﻿'+rows.map(function(r){return r.map(csvCell).join(',')}).join('\r\n');
+}
+/* ---------- file writers (no libraries) ---------- */
+var CRCT=(function(){var t=[],c,n,k;for(n=0;n<256;n++){c=n;for(k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+function crc32(u){var c=0xFFFFFFFF;for(var i=0;i<u.length;i++)c=CRCT[(c^u[i])&255]^(c>>>8);return(c^0xFFFFFFFF)>>>0}
+function zipStore(files){
+  var enc=new TextEncoder(),parts=[],cen=[],off=0,total=0;
+  files.forEach(function(f){
+    var n=enc.encode(f.name),d=enc.encode(f.data),crc=crc32(d);
+    var h=new DataView(new ArrayBuffer(30));
+    h.setUint32(0,0x04034b50,true);h.setUint16(4,20,true);h.setUint16(6,0x0800,true);h.setUint16(8,0,true);h.setUint16(10,0,true);h.setUint16(12,0x21,true);
+    h.setUint32(14,crc,true);h.setUint32(18,d.length,true);h.setUint32(22,d.length,true);h.setUint16(26,n.length,true);h.setUint16(28,0,true);
+    parts.push(new Uint8Array(h.buffer),n,d);
+    var c=new DataView(new ArrayBuffer(46));
+    c.setUint32(0,0x02014b50,true);c.setUint16(4,20,true);c.setUint16(6,20,true);c.setUint16(8,0x0800,true);c.setUint16(10,0,true);c.setUint16(12,0,true);c.setUint16(14,0x21,true);
+    c.setUint32(16,crc,true);c.setUint32(20,d.length,true);c.setUint32(24,d.length,true);c.setUint16(28,n.length,true);c.setUint16(30,0,true);c.setUint16(32,0,true);c.setUint16(34,0,true);c.setUint16(36,0,true);c.setUint32(38,0,true);c.setUint32(42,off,true);
+    cen.push(new Uint8Array(c.buffer),n);
+    off+=30+n.length+d.length;
+  });
+  var cdStart=off,cdSize=0;
+  cen.forEach(function(p){cdSize+=p.length});
+  var e=new DataView(new ArrayBuffer(22));
+  e.setUint32(0,0x06054b50,true);e.setUint16(4,0,true);e.setUint16(6,0,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cdSize,true);e.setUint32(16,cdStart,true);e.setUint16(20,0,true);
+  var all=parts.concat(cen,[new Uint8Array(e.buffer)]);
+  all.forEach(function(p){total+=p.length});
+  var out=new Uint8Array(total),pos=0;
+  all.forEach(function(p){out.set(p,pos);pos+=p.length});
+  return out;
+}
+function xe(s){return String(s==null?'':s).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function serial(s){var p=s.split('-');return Math.round(Date.UTC(+p[0],+p[1]-1,+p[2])/86400000)+25569}
+
+function makeXLSX(a){
+  var C='ABCDEFG',R=[];
+  function sc(r,c,v,s){return '<c r="'+C[c]+r+'" s="'+s+'" t="inlineStr"><is><t xml:space="preserve">'+xe(v)+'</t></is></c>'}
+  function nc(r,c,v,s,f){return '<c r="'+C[c]+r+'" s="'+s+'">'+(f?'<f>'+f+'</f>':'')+'<v>'+v+'</v></c>'}
+  function bc(r,c,s){return '<c r="'+C[c]+r+'" s="'+s+'"/>'}
+  var tt=totals(a),first=5,last=4+a.length,tr=last+2;
+  R.push('<row r="1" ht="26" customHeight="1">'+sc(1,0,'Rupee Ledger – Statement',1)+'</row>');
+  R.push('<row r="2">'+sc(2,0,'Period: '+rangeLabel(),2)+'</row>');
+  R.push('<row r="3">'+sc(3,0,'Generated: '+dmy(today()),2)+'</row>');
+  R.push('<row r="4" ht="22" customHeight="1">'+['S.No','Date','Description','Paid Via','Expense (₹)','Income (₹)','Remarks'].map(function(h,i){return sc(4,i,h,3)}).join('')+'</row>');
+  a.forEach(function(t,i){
+    var r=first+i;
+    R.push('<row r="'+r+'">'+nc(r,0,t.no,9)+nc(r,1,serial(t.date),5)+sc(r,2,t.desc,4)+sc(r,3,t.via,4)+
+      (t.type==='out'?nc(r,4,t.amount,6):bc(r,4,6))+(t.type==='in'?nc(r,5,t.amount,6):bc(r,5,6))+sc(r,6,t.remarks,10)+'</row>');
+  });
+  R.push('<row r="'+tr+'">'+bc(tr,0,7)+bc(tr,1,7)+bc(tr,2,7)+sc(tr,3,'Total',7)+nc(tr,4,tt.out,8,'SUM(E'+first+':E'+last+')')+nc(tr,5,tt.inc,8,'SUM(F'+first+':F'+last+')')+bc(tr,6,7)+'</row>');
+  var n=tr+1;
+  R.push('<row r="'+n+'">'+bc(n,0,7)+bc(n,1,7)+bc(n,2,7)+sc(n,3,'Net Balance',7)+nc(n,4,Math.round((tt.inc-tt.out)*100)/100,8,'F'+tr+'-E'+tr)+bc(n,5,7)+bc(n,6,7)+'</row>');
+  var W=[8,13,20,14,15,15,40];
+  var sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<sheetViews><sheetView workbookViewId="0" showGridLines="0"><pane ySplit="4" topLeftCell="A5" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>'+
+    '<sheetFormatPr defaultRowHeight="15"/><cols>'+W.map(function(w,i){return '<col min="'+(i+1)+'" max="'+(i+1)+'" width="'+w+'" customWidth="1"/>'}).join('')+'</cols>'+
+    '<sheetData>'+R.join('')+'</sheetData><mergeCells count="3"><mergeCell ref="A1:G1"/><mergeCell ref="A2:G2"/><mergeCell ref="A3:G3"/></mergeCells>'+
+    '<pageMargins left="0.5" right="0.5" top="0.6" bottom="0.6" header="0.3" footer="0.3"/><pageSetup paperSize="9" orientation="landscape"/></worksheet>';
+  var bd='<border><left style="thin"><color rgb="FFD0D7D2"/></left><right style="thin"><color rgb="FFD0D7D2"/></right><top style="thin"><color rgb="FFD0D7D2"/></top><bottom style="thin"><color rgb="FFD0D7D2"/></bottom><diagonal/></border>';
+  function xf(num,font,fill,border,al){return '<xf numFmtId="'+num+'" fontId="'+font+'" fillId="'+fill+'" borderId="'+border+'" xfId="0" applyNumberFormat="1" applyFont="1" applyFill="1" applyBorder="1"'+(al?' applyAlignment="1"><alignment '+al+'/></xf>':'/>')}
+  var styles='<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'+
+    '<numFmts count="2"><numFmt numFmtId="164" formatCode="dd\\-mm\\-yyyy"/><numFmt numFmtId="165" formatCode="#,##0.00"/></numFmts>'+
+    '<fonts count="4"><font><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><name val="Calibri"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Calibri"/></font><font><b/><sz val="16"/><color rgb="FF0E7A5F"/><name val="Calibri"/></font></fonts>'+
+    '<fills count="4"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF0E7A5F"/><bgColor indexed="64"/></patternFill></fill><fill><patternFill patternType="solid"><fgColor rgb="FFDFF1EA"/><bgColor indexed="64"/></patternFill></fill></fills>'+
+    '<borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border>'+bd+'</borders>'+
+    '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>'+
+    '<cellXfs count="11">'+
+      xf(0,0,0,0)+xf(0,3,0,0)+xf(0,0,0,0)+
+      xf(0,2,2,1,'horizontal="center" vertical="center"')+
+      xf(0,0,0,1,'vertical="top"')+
+      xf(164,0,0,1,'horizontal="left" vertical="top"')+
+      xf(165,0,0,1,'vertical="top"')+
+      xf(0,1,3,1)+xf(165,1,3,1)+
+      xf(0,0,0,1,'horizontal="center" vertical="top"')+
+      xf(0,0,0,1,'vertical="top" wrapText="1"')+
+    '</cellXfs><cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>';
+  var X='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  return zipStore([
+    {name:'[Content_Types].xml',data:X+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'},
+    {name:'_rels/.rels',data:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'},
+    {name:'xl/workbook.xml',data:X+'<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Transactions" sheetId="1" r:id="rId1"/></sheets><calcPr fullCalcOnLoad="1"/></workbook>'},
+    {name:'xl/_rels/workbook.xml.rels',data:X+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'},
+    {name:'xl/styles.xml',data:styles},
+    {name:'xl/worksheets/sheet1.xml',data:sheet}
+  ]);
+}
+
+/* PDF: A4 landscape, standard Helvetica fonts */
+var mctx=null;
+function tw(s,sz,bold){
+  if(!mctx){try{mctx=document.createElement('canvas').getContext('2d')}catch(e){}}
+  if(mctx){mctx.font=(bold?'bold ':'')+sz+'px Helvetica, Arial, sans-serif';return mctx.measureText(s).width}
+  return s.length*sz*0.5;
+}
+function pdfText(s){
+  s=String(s==null?'':s).replace(/₹/g,'Rs.');var o='';
+  for(var i=0;i<s.length;i++){var c=s.charCodeAt(i);o+=(c>=32&&c<127)||(c>=160&&c<=255)?s.charAt(i):(c===9||c===10||c===13?' ':'?')}
+  return o;
+}
+function pdfEsc(s){return s.replace(/\\/g,'\\\\').replace(/\(/g,'\\(').replace(/\)/g,'\\)')}
+function wrapText(s,w,sz,bold){
+  s=pdfText(s);if(!s)return[''];
+  var words=s.split(/ +/),lines=[],cur='';
+  words.forEach(function(wd){
+    while(tw(wd,sz,bold)>w&&wd.length>1){
+      var k=wd.length;while(k>1&&tw(wd.slice(0,k),sz,bold)>w)k--;
+      if(cur){lines.push(cur);cur=''}
+      lines.push(wd.slice(0,k));wd=wd.slice(k);
+    }
+    var t=cur?cur+' '+wd:wd;
+    if(cur&&tw(t,sz,bold)>w){lines.push(cur);cur=wd}else cur=t;
+  });
+  if(cur||!lines.length)lines.push(cur);
+  return lines;
+}
+function f2(n){return Number(n).toLocaleString('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function makePDF(a){
+  var PW=842,PH=595,M=36,CW=[34,60,120,80,76,76,324],X=[],i,acc=M;
+  for(i=0;i<CW.length;i++){X.push(acc);acc+=CW[i]}
+  var G='0.055 0.478 0.373',tt=totals(a),pages=[],cur,top;
+  function page(){cur=[];pages.push(cur);top=M}
+  function T(s,x,tp,sz,bold,col){cur.push((col||'0 0 0')+' rg BT /'+(bold?'F2':'F1')+' '+sz+' Tf '+x.toFixed(2)+' '+(PH-tp-sz*0.85).toFixed(2)+' Td ('+pdfEsc(pdfText(s))+') Tj ET')}
+  function TR(s,xr,tp,sz,bold,col){T(s,xr-tw(pdfText(s),sz,bold),tp,sz,bold,col)}
+  function RC(x,tp,w,h,col){cur.push(col+' rg '+x.toFixed(2)+' '+(PH-tp-h).toFixed(2)+' '+w.toFixed(2)+' '+h+' re f')}
+  function LN(tp){cur.push('0.82 0.85 0.83 RG 0.5 w '+M+' '+(PH-tp).toFixed(2)+' m '+(PW-M)+' '+(PH-tp).toFixed(2)+' l S')}
+  function head(){
+    RC(M,top,PW-2*M,20,G);
+    var H=['S.No','Date','Description','Paid Via','Expense','Income','Remarks'];
+    H.forEach(function(h,k){if(k===4||k===5)TR(h,X[k]+CW[k]-5,top+6,9,true,'1 1 1');else T(h,X[k]+5,top+6,9,true,'1 1 1')});
+    top+=20;
+  }
+  page();
+  T('Rupee Ledger - Statement',M,top,18,true,G);
+  T('Period: '+rangeLabel(),M,top+28,10,false,'0.35 0.4 0.37');
+  T('Generated: '+dmy(today()),M,top+42,10,false,'0.35 0.4 0.37');
+  T('Total Spending: Rs. '+f2(tt.out),M,top+62,11,true);
+  T('Total Income: Rs. '+f2(tt.inc),M+250,top+62,11,true);
+  T('Entries: '+a.length,M+480,top+62,11,true);
+  top+=86;head();
+  var LIM=PH-M-14;
+  a.forEach(function(t,r){
+    var cols=[[String(t.no)],[dmy(t.date)],wrapText(t.desc,CW[2]-10,9),wrapText(t.via,CW[3]-10,9),[t.type==='out'?f2(t.amount):''],[t.type==='in'?f2(t.amount):''],wrapText(t.remarks,CW[6]-10,9)];
+    var n=Math.max.apply(null,cols.map(function(c){return c.length})),h=n*11+8;
+    if(top+h>LIM){page();head()}
+    if(r%2)RC(M,top,PW-2*M,h,'0.955 0.97 0.96');
+    cols.forEach(function(c,k){c.forEach(function(ln,j){
+      if(!ln)return;
+      if(k===4)TR(ln,X[k]+CW[k]-5,top+4+j*11,9,false,'0.72 0.26 0.06');
+      else if(k===5)TR(ln,X[k]+CW[k]-5,top+4+j*11,9,false,G);
+      else T(ln,X[k]+5,top+4+j*11,9,false);
+    })});
+    top+=h;LN(top);
+  });
+  if(top+50>LIM){page();head()}
+  RC(M,top,PW-2*M,22,'0.875 0.945 0.918');
+  T('Total',X[3]+5,top+7,10,true);TR(f2(tt.out),X[4]+CW[4]-5,top+7,10,true);TR(f2(tt.inc),X[5]+CW[5]-5,top+7,10,true);
+  top+=22;
+  RC(M,top,PW-2*M,22,'0.875 0.945 0.918');
+  T('Net Balance',X[3]+5,top+7,10,true);TR((tt.inc-tt.out<0?'-':'')+f2(Math.abs(tt.inc-tt.out)),X[5]+CW[5]-5,top+7,10,true);
+  pages.forEach(function(p,k){cur=p;T('Rupee Ledger',M,PH-26,8,false,'0.45 0.5 0.47');TR('Page '+(k+1)+' of '+pages.length,PW-M,PH-26,8,false,'0.45 0.5 0.47')});
+  var objs=[],n=pages.length,kids=[];
+  for(i=0;i<n;i++)kids.push((5+i*2)+' 0 R');
+  objs[1]='<< /Type /Catalog /Pages 2 0 R >>';
+  objs[2]='<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+n+' >>';
+  objs[3]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+  objs[4]='<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+  pages.forEach(function(p,k){
+    var body=p.join('\n');
+    objs[5+k*2]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+PW+' '+PH+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+(6+k*2)+' 0 R >>';
+    objs[6+k*2]='<< /Length '+body.length+' >>\nstream\n'+body+'\nendstream';
+  });
+  var out='%PDF-1.4\n',offs=[];
+  for(i=1;i<objs.length;i++){offs[i]=out.length;out+=i+' 0 obj\n'+objs[i]+'\nendobj\n'}
+  var xr=out.length;
+  out+='xref\n0 '+objs.length+'\n0000000000 65535 f \n';
+  for(i=1;i<objs.length;i++)out+=('0000000000'+offs[i]).slice(-10)+' 00000 n \n';
+  out+='trailer\n<< /Size '+objs.length+' /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF';
+  var u=new Uint8Array(out.length);
+  for(i=0;i<out.length;i++)u[i]=out.charCodeAt(i)&255;
+  return u;
+}
+
+function fname(ext){return 'rupee-ledger_'+ui.xfrom+'_to_'+ui.xto+'.'+ext}
+function saveFile(name,data,mime){
+  try{
+    var u=URL.createObjectURL(new Blob([data],{type:mime})),l=document.createElement('a');
+    l.href=u;l.download=name;document.body.appendChild(l);l.click();l.remove();
+    setTimeout(function(){URL.revokeObjectURL(u)},5000);
+    toast('Saved '+name+' to Downloads');return true;
+  }catch(e){toast('Could not save the file');return false}
+}
+function doExport(kind){
+  var a=rangeItems();
+  if(!a.length){toast('No entries in this date range');return}
+  if(ui.xfrom>ui.xto){toast('From date is after To date');return}
+  var data,mime;
+  try{
+    if(kind==='csv'){data=makeCSV(a);mime='text/csv;charset=utf-8'}
+    else if(kind==='xlsx'){data=makeXLSX(a);mime='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
+    else{data=makePDF(a);mime='application/pdf'}
+  }catch(e){toast('Could not build the file');return}
+  saveFile(fname(kind),data,mime);
+}
+
+/* backup */
+var pending=null;
+function readBackup(inp){
+  var f=inp.files&&inp.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    inp.value='';
+    try{
+      var d=JSON.parse(r.result);
+      if(!d||!Array.isArray(d.items))throw 0;
+      var items=[],max=0;
+      d.items.forEach(function(t){
+        if(!t||typeof t.no!=='number'||!/^\d{4}-\d{2}-\d{2}$/.test(t.date)||!(t.amount>0)||isFinite(t.amount)===false)return;
+        items.push({no:t.no,date:t.date,type:t.type==='in'?'in':'out',amount:Math.round(t.amount*100)/100,desc:tc(String(t.desc||'')).slice(0,15),via:String(t.via||'Other').slice(0,20),remarks:tc(String(t.remarks||''))});
+        if(t.no>max)max=t.no;
+      });
+      if(!items.length)throw 0;
+      pending={items:items,nextNo:Math.max(+d.nextNo||1,max+1),lastVia:d.lastVia};
+      $('rbox').innerHTML='<div class="list" style="padding:14px;margin-top:10px"><b>Replace the '+S.items.length+' entries on this phone with '+items.length+' from the backup?</b><div class="row2" style="margin-top:12px"><button class="btn" data-act="restore-yes">Replace</button><button class="btn alt" data-act="restore-no">Cancel</button></div></div>';
+    }catch(e){pending=null;toast('That file is not a Rupee Ledger backup')}
+  };
+  r.readAsText(f);
+}
+
+/* events */
+document.addEventListener('click',function(e){
+  var el=e.target.closest('button');if(!el)return;
+  var d=el.dataset;
+  if(d.go){ui.tab=d.go;render();window.scrollTo(0,0);return}
+  if(el.id==='add'){openSheet();return}
+  if(d.edit){openSheet(parseInt(d.edit,10));return}
+  if(el.id==='close'){closeSheet();return}
+  if(el.id==='save'){commit();return}
+  if(el.id==='del'){
+    if(el.dataset.sure){var n=draft.no;S.items=S.items.filter(function(t){return t.no!==n});save();closeSheet();render();toast('Entry deleted');}
+    else{el.dataset.sure='1';el.textContent='Tap again to confirm delete'}
+    return}
+  if(d.type&&draft){readDraft();draft.type=d.type;drawSheet(false);return}
+  if(d.via&&draft){readDraft();draft.via=d.via;drawSheet(false);return}
+  if(d.desc&&draft){readDraft();draft.desc=d.desc.slice(0,15);drawSheet(false);$('fa').focus();return}
+  if(el.id==='sample'){
+    var t=new Date();function ago(n){var x=new Date(t.getFullYear(),t.getMonth(),t.getDate()-n);return iso(x)}
+    [['Tea & snacks',45,'PhonePe',0,'out',''],['Groceries',620.5,'GPay',0,'out','Weekly vegetables'],['Auto fare',80,'Cash',1,'out',''],['Mobile recharge',299,'Amazon Pay',2,'out','28 day plan'],['Salary',25000,'SBI',3,'in','Monthly credit']].forEach(function(r){
+      S.items.push({no:S.nextNo++,date:ago(r[3]),type:r[4],amount:r[1],desc:tc(r[0]),via:r[2],remarks:tc(r[5])})});
+    save();render();toast('Sample entries added. Tap one to edit or delete.');return}
+  if(d.preset){
+    var n=new Date();
+    if(d.preset==='month'){ui.xfrom=monthStart(n);ui.xto=today()}
+    else if(d.preset==='last'){ui.xfrom=iso(new Date(n.getFullYear(),n.getMonth()-1,1));ui.xto=iso(new Date(n.getFullYear(),n.getMonth(),0))}
+    else{var s=sorted(S.items);ui.xfrom=s.length?s[s.length-1].date:monthStart(n);ui.xto=today()}
+    render();return}
+  if(d.exp){doExport(d.exp);return}
+  if(d.opt){ui[d.opt]=d.val;render();return}
+  if(d.act==='backup'){
+    saveFile('rupee-ledger-backup_'+today()+'.json',JSON.stringify({app:'rupee-ledger',version:1,saved:today(),nextNo:S.nextNo,lastVia:S.lastVia,items:S.items}),'application/json');return}
+  if(d.act==='restore-no'){pending=null;$('rbox').innerHTML='';return}
+  if(d.act==='restore-yes'&&pending){
+    S.items=pending.items;S.nextNo=pending.nextNo;if(pending.lastVia)S.lastVia=pending.lastVia;pending=null;save();render();toast('Backup restored');return}
+});
+document.addEventListener('input',function(e){
+  var id=e.target.id;
+  if(id==='fd'){$('cnt').textContent=e.target.value.length+'/15';return}
+  if(id==='fa'){var v=e.target.value.replace(/[^0-9.]/g,'');var p=v.split('.');if(p.length>2)v=p[0]+'.'+p.slice(1).join('');if(p[1]&&p[1].length>2)v=p[0]+'.'+p[1].slice(0,2);if(v!==e.target.value)e.target.value=v;return}
+  if(id==='q'){ui.q=e.target.value;$('reclist').innerHTML=recList()}
+});
+document.addEventListener('change',function(e){
+  var id=e.target.id;
+  if(id==='restore'){readBackup(e.target);return}
+  if(id==='fvia'){ui.via=e.target.value;$('reclist').innerHTML=recList()}
+  else if(id==='ftype'){ui.type=e.target.value;$('reclist').innerHTML=recList()}
+  else if(id==='ffrom'){ui.from=e.target.value;$('reclist').innerHTML=recList()}
+  else if(id==='fto'){ui.to=e.target.value;$('reclist').innerHTML=recList()}
+  else if(id==='xf'){ui.xfrom=e.target.value;$('xsum').innerHTML=xsum()}
+  else if(id==='xt'){ui.xto=e.target.value;$('xsum').innerHTML=xsum()}
+});
+document.addEventListener('focusout',function(e){
+  var id=e.target.id;
+  if(id==='fd'||id==='fr'){var v=tc(e.target.value);if(v!==e.target.value)e.target.value=v}
+});
+document.addEventListener('click',function(e){
+  var tr=e.target.closest('tr[data-edit]');if(tr)openSheet(parseInt(tr.dataset.edit,10));
+});
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!$('sheet').hidden)closeSheet()});
+render();
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){})})}
+})();
+</script>
+</body></html>
